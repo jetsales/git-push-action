@@ -46,6 +46,9 @@ inputs:
   rebase:
     description: 'Determines if `git pull --rebase` is used before the push. This is useful if multiple actions try to push at the same time.'
     required: false
+  rebase_theirs_paths:
+    description: 'Comma-separated paths. On rebase conflict, use the replayed commit version (`git checkout --theirs`) for these files (e.g. CI-generated version in a ConfigMap).'
+    required: false
   directory:
     description: 'Directory to change to before pushing.'
     required: false

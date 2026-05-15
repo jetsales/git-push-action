@@ -13,6 +13,7 @@ INPUT_AMEND=${INPUT_AMEND:-false}
 INPUT_FORCE=${INPUT_FORCE:-false}
 INPUT_TAGS=${INPUT_TAGS:-false}
 INPUT_REBASE=${INPUT_REBASE:-false}
+INPUT_REBASE_THEIRS_PATHS=${INPUT_REBASE_THEIRS_PATHS:-''}
 INPUT_EMPTY=${INPUT_EMPTY:-false}
 INPUT_DIRECTORY=${INPUT_DIRECTORY:-'.'}
 REPOSITORY=${INPUT_REPOSITORY:-$GITHUB_REPOSITORY}
@@ -69,7 +70,28 @@ fi
 
 if ${INPUT_REBASE}; then
     git fetch origin "${INPUT_BRANCH}"
-    git rebase "origin/${INPUT_BRANCH}"
+    if ! git rebase "origin/${INPUT_BRANCH}"; then
+        while [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; do
+            unmerged=$(git diff --name-only --diff-filter=U)
+            if [ -n "$unmerged" ] && [ -n "${INPUT_REBASE_THEIRS_PATHS}" ]; then
+                for path in $(printf '%s' "${INPUT_REBASE_THEIRS_PATHS}" | tr ',' '\n'); do
+                    path=$(printf '%s\n' "$path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+                    [ -z "$path" ] && continue
+                    if printf '%s\n' "$unmerged" | grep -Fxq "$path"; then
+                        git checkout --theirs -- "$path"
+                        git add -- "$path"
+                    fi
+                done
+            fi
+            remaining=$(git diff --name-only --diff-filter=U)
+            if [ -n "$remaining" ]; then
+                printf '%s\n' "git rebase: conflitos sem resolucao automatica:" >&2
+                printf '%s\n' "$remaining" >&2
+                exit 1
+            fi
+            GIT_EDITOR=true git rebase --continue
+        done
+    fi
 fi
 
 git push "${remote_repo}" HEAD:"${INPUT_BRANCH}" --follow-tags $_FORCE_OPTION $_TAGS;

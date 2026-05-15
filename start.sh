@@ -68,7 +68,8 @@ else
 fi
 
 if ${INPUT_REBASE}; then
-    git pull --rebase
+    git fetch origin "${INPUT_BRANCH}"
+    git rebase "origin/${INPUT_BRANCH}"
 fi
 
 git push "${remote_repo}" HEAD:"${INPUT_BRANCH}" --follow-tags $_FORCE_OPTION $_TAGS;
